@@ -198,7 +198,7 @@ def main():
     # API Configuration
     st.sidebar.header("🔧 API Configuration")
     api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Enter your OpenAI API key")
-    model_choice = st.sidebar.selectbox("Model", ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo"], index=0)
+    model_choice = st.sidebar.selectbox("Model", ["gpt-4.1-nano"], index=0)
     
     if not api_key:
         st.warning("⚠️ Please enter your OpenAI API key in the sidebar to continue.")
