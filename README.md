@@ -1,5 +1,7 @@
 # 🚩 Fake News vs Real News LLM Classifier
 
+Access app at: https://anshisgood-red-flag-classifier-app-esz5kh.streamlit.app/
+
 A Streamlit web app for classifying news headlines as "Fake" or "Real" using OpenAI GPT models with few-shot prompting. Built for fast, interactive classification with single or batch inputs.
 
 ## Features
