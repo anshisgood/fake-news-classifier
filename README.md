@@ -1,6 +1,6 @@
-# Red Flag vs Green Flag LLM Classifier
+# 🚩 Fake News vs Real News LLM Classifier
 
-A Streamlit web application for many-shot classification of text as "Red Flag" or "Green Flag" using Large Language Models (LLMs) with few-shot prompting, based on consensus-annotated data from two groups.
+A Streamlit web app for classifying news headlines as "Fake" or "Real" using OpenAI GPT models with few-shot prompting. Built for fast, interactive classification with single or batch inputs.
 
 ## Features
 
@@ -11,7 +11,7 @@ A Streamlit web application for many-shot classification of text as "Red Flag" o
 - **Interactive Web Interface**: User-friendly Streamlit app for real-time classification
 - **Batch Processing**: Support for multiple upload methods with cost estimation:
   - Text files (one sentence per line)
-  - CSV files (with 'sentence' column) 
+  - CSV files (with 'sentence' column)
   - Manual text input
 - **LLM Evaluation**: Performance testing on sample test set with API cost tracking
 - **Downloadable Results**: Export batch classification results as CSV
@@ -19,16 +19,19 @@ A Streamlit web application for many-shot classification of text as "Red Flag" o
 ## Setup
 
 1. **Install dependencies:**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 2. **Get OpenAI API Key:**
+
    - Sign up at https://platform.openai.com
    - Create an API key in your dashboard
    - Add credits to your account
 
 3. **Run the app:**
+
    ```bash
    streamlit run app.py
    ```
@@ -37,14 +40,16 @@ A Streamlit web application for many-shot classification of text as "Red Flag" o
 
 ## Data
 
-The app uses consensus data from two annotation groups:
-- `data/Consensus items : Group 1 - Red Flag vs Green Flag.json`
-- `data/Consensus items: Group 2 - Red Flag vs Green Flag.json`
+This app uses data from kaggle: https://www.kaggle.com/datasets/bhavikjikadara/fake-news-detection/data?select=true.csv
+Csv files were converted into a single json for simplicity.
+
+- `data/fake_news_dataset.json`
 
 Each file contains JSON arrays with objects having:
+
 - `item_id`: Unique identifier
-- `sentence`: Text content
-- `gold_label`: Either "Red Flag" or "Green Flag"
+- `headline`: News headline content
+- `gold_label`: Either "Fake" or "Real"
 
 ## Usage
 
@@ -72,28 +77,31 @@ Each file contains JSON arrays with objects having:
 ## Example Usage
 
 ### Single Text Classification
+
 ```
-Input: "The rain had softened to a drizzle."
-Output: ✅ Green Flag (Confidence: 0.85)
+Input: "U.S. looks to Facebook, private groups to battle online extremism."
+Output: ✅ Real (Confidence: 0.95)
 ```
 
 ### Few-Shot Prompt Structure
-```
-You are a text classifier that categorizes sentences as either "Red Flag" or "Green Flag".
 
-Red Flag: Concerning, negative, problematic, or potentially harmful content...
-Green Flag: Neutral, positive, educational, or harmless content...
+```
+You are a text classifier that categorizes headlines as either "Fake" or "Real".
+
+Fake: Misleading, false, or sensational headlines
+Real: Verified, factual, or reliable headlines
 
 Examples:
-Text: "It had been left on Elara's doorstep in a small wooden box with no note."
-Classification: Red Flag
+Text: "Aliens Invade Washington DC Overnight"
+Classification: Fake
 
-Text: "Photosynthesis is crucial for life on Earth..."
-Classification: Green Flag
+Text: "NASA Confirms Water on Mars"
+Classification: Real
 
-Text: "[Your input text here]"
+Text: "[Your headline here]"
 Classification:
 ```
 
 ### Batch Classification
+
 Upload files with cost estimates shown before processing. Results include confidence scores and are downloadable as CSV.

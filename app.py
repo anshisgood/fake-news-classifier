@@ -13,8 +13,7 @@ from typing import List, Dict
 def load_data():
     """Load and combine data from both consensus files."""
     data_files = [
-        "data/Consensus items : Group 1 - Red Flag vs Green Flag.json",
-        "data/Consensus items: Group 2 - Red Flag vs Green Flag.json"
+        "./data/fake_news_dataset.json"
     ]
     
     combined_data = []
@@ -35,13 +34,13 @@ def load_data():
     df = pd.DataFrame(combined_data)
     
     # Filter out 'Neither' labels for binary classification
-    df = df[df['gold_label'].isin(['Red Flag', 'Green Flag'])]
+    df = df[df['gold_label'].isin(['Fake', 'Real'])]
     
     return df
 
 def create_balanced_split(df, test_size=0.3, random_state=42):
     """Create a balanced train-test split for few-shot examples and evaluation."""
-    X = df['sentence']
+    X = df['headline']
     y = df['gold_label']
     
     # Stratified split to maintain class balance
@@ -56,12 +55,12 @@ def create_balanced_split(df, test_size=0.3, random_state=42):
 
 def create_few_shot_examples(X_train, y_train, n_examples_per_class=10):
     """Create balanced few-shot examples for the LLM prompt."""
-    df_train = pd.DataFrame({'sentence': X_train, 'label': y_train})
+    df_train = pd.DataFrame({'headline': X_train, 'label': y_train})
     
     few_shot_examples = []
     
     # Get examples for each class
-    for label in ['Red Flag', 'Green Flag']:
+    for label in ['Fake', 'Real']:
         class_examples = df_train[df_train['label'] == label].sample(
             n=min(n_examples_per_class, len(df_train[df_train['label'] == label])),
             random_state=42
@@ -69,7 +68,7 @@ def create_few_shot_examples(X_train, y_train, n_examples_per_class=10):
         
         for _, row in class_examples.iterrows():
             few_shot_examples.append({
-                'sentence': row['sentence'],
+                'headline': row['headline'],
                 'label': row['label']
             })
     
@@ -80,11 +79,11 @@ def create_few_shot_examples(X_train, y_train, n_examples_per_class=10):
 def build_few_shot_prompt(few_shot_examples: List[Dict], target_text: str) -> str:
     """Build a few-shot prompt for the LLM."""
     
-    prompt = """You are a text classifier that categorizes sentences as either "Red Flag" or "Green Flag".
+    prompt = """You are a text classifier that categorizes headlines as either "Fake" or "Real".
 
-    Your task is to label the sentence as either 'Green flag' or 'Red flag'. 
-    Base your judgment on the main perspective implied by the text, as follows: If the text contains pronouns like 'I' and 'you', imagine you are hearing the speaker or the speaker is addressing you, and ask yourself: "Is this a green flag or a red flag?" If the text has a 3rd person perspective (with pronouns like "s/he" and "them"), put yourself in the narrator's shoes and ask yourself: "Is this a green or a red flag?"
-    Try to consider the sentence as a stand-alone text (even if you know the source).
+    Your task is to label the headline as either 'Real' or 'Fake'. 
+    Base your judgment on the main perspective implied by the text, as follows: If the text contains pronouns like 'I' and 'you', imagine you are hearing the speaker or the speaker is addressing you, and ask yourself: "Is this fake news or real news?" If the text has a 3rd person perspective (with pronouns like "s/he" and "them"), put yourself in the narrator's shoes and ask yourself: "Is this fake or real?"
+    Try to consider the headline as a stand-alone text (even if you know the source).
 
 Here are some examples:
 
@@ -92,7 +91,7 @@ Here are some examples:
     
     # Add few-shot examples
     for example in few_shot_examples:
-        prompt += f'Text: "{example["sentence"]}"\nClassification: {example["label"]}\n\n'
+        prompt += f'Text: "{example["headline"]}"\nClassification: {example["label"]}\n\n'
     
     # Add the target text
     prompt += f'Text: "{target_text}"\nClassification:'
@@ -121,7 +120,7 @@ def predict_with_llm(client, few_shot_examples: List[Dict], texts: List[str], mo
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[
-                    {"role": "system", "content": "You are a helpful text classifier. Respond with exactly 'Red Flag' or 'Green Flag' only."},
+                    {"role": "system", "content": "You are a helpful text classifier. Respond with exactly 'Fake' or 'Real' only."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.1,
@@ -131,13 +130,13 @@ def predict_with_llm(client, few_shot_examples: List[Dict], texts: List[str], mo
             prediction = response.choices[0].message.content.strip()
             
             # Clean up the prediction
-            if "Red Flag" in prediction:
-                prediction = "Red Flag"
-            elif "Green Flag" in prediction:
-                prediction = "Green Flag"
+            if "Fake" in prediction:
+                prediction = "Fake"
+            elif "Real" in prediction:
+                prediction = "Real"
             else:
-                # Default to Green Flag if unclear
-                prediction = "Green Flag"
+                # Default to Real if unclear
+                prediction = "Real"
             
             result = {
                 'text': text,
@@ -154,7 +153,7 @@ def predict_with_llm(client, few_shot_examples: List[Dict], texts: List[str], mo
             # Return default result on error
             result = {
                 'text': text,
-                'prediction': "Green Flag"
+                'prediction': "Error – could not classify"
             }
             results.append(result)
     
@@ -177,12 +176,12 @@ def evaluate_llm_model(client, few_shot_examples: List[Dict], X_test, y_test, mo
 
 def main():
     st.set_page_config(
-        page_title="Red Flag vs Green Flag LLM Classifier",
+        page_title="Fake News vs Real News LLM Classifier",
         page_icon="🚩",
         layout="wide"
     )
     
-    st.title("🚩 Red Flag vs Green Flag LLM Many-Shot Classifier")
+    st.title("🚩 Fake News vs Real News LLM Many-Shot Classifier")
     st.markdown("*Powered by OpenAI GPT with Few-Shot Learning*")
     st.markdown("---")
     
@@ -221,7 +220,7 @@ def main():
     # Configuration
     st.sidebar.header("⚙️ Model Configuration")
     n_examples_per_class = st.sidebar.slider("Examples per class in prompt", min_value=0, max_value=50, value=5, 
-                                            help="Number of examples for each class (Red/Green Flag) to include in the few-shot prompt")
+                                            help="Number of examples for each class (Fake/Real) to include in the few-shot prompt")
     test_size = st.sidebar.slider("Test Set Size (%)", min_value=10, max_value=50, value=30) / 100
     
     # Main content - Single column layout
@@ -249,26 +248,26 @@ def main():
             # Show few-shot examples info
             st.info(f"""
             **Few-Shot Examples**: {len(few_shot_examples)} total
-            - {len([ex for ex in few_shot_examples if ex['label'] == 'Red Flag'])} Red Flag examples
-            - {len([ex for ex in few_shot_examples if ex['label'] == 'Green Flag'])} Green Flag examples
+            - {len([ex for ex in few_shot_examples if ex['label'] == 'Fake'])} Fake News examples
+            - {len([ex for ex in few_shot_examples if ex['label'] == 'Real'])} Real News examples
             
             **Test Set**: {len(X_test)} examples  
-            - Red Flag: {sum(y_test == 'Red Flag')}
-            - Green Flag: {sum(y_test == 'Green Flag')}
+            - Fake: {sum(y_test == 'Fake')}
+            - Real: {sum(y_test == 'Real')}
             """)
             
             # Show sample few-shot examples
             with st.expander("🔍 View Sample Few-Shot Examples"):
                 for example in few_shot_examples[:6]:  # Show first 6
-                    if example['label'] == 'Red Flag':
-                        st.error(f"**{example['label']}**: {example['sentence'][:100]}...")
+                    if example['label'] == 'Fake':
+                        st.error(f"**{example['label']}**: {example['headline']}")
                     else:
-                        st.success(f"**{example['label']}**: {example['sentence'][:100]}...")
+                        st.success(f"**{example['label']}**: {example['headline']}")
                 
                 # Show example prompt
                 st.markdown("---")
                 st.subheader("📝 Example Full Prompt")
-                example_prompt = build_few_shot_prompt(few_shot_examples, "This is an example sentence for demonstration.")
+                example_prompt = build_few_shot_prompt(few_shot_examples, "This is an example headline for demonstration.")
                 st.code(example_prompt, language="text")
     
     st.markdown("---")
@@ -321,16 +320,16 @@ def main():
                     st.subheader("Classification Metrics")
                     # Extract only the class-specific metrics
                     simple_metrics = {
-                        'Green Flag': {
-                            'Precision': report['Green Flag']['precision'],
-                            'Recall': report['Green Flag']['recall'], 
-                            'F1-Score': report['Green Flag']['f1-score'],
+                        'Real': {
+                            'Precision': report['Real']['precision'],
+                            'Recall': report['Real']['recall'], 
+                            'F1-Score': report['Real']['f1-score'],
                             'Accuracy': report['accuracy']
                         },
-                        'Red Flag': {
-                            'Precision': report['Red Flag']['precision'],
-                            'Recall': report['Red Flag']['recall'],
-                            'F1-Score': report['Red Flag']['f1-score'],
+                        'Fake': {
+                            'Precision': report['Fake']['precision'],
+                            'Recall': report['Fake']['recall'],
+                            'F1-Score': report['Fake']['f1-score'],
                             'Accuracy': report['accuracy']
                         }
                     }
@@ -345,8 +344,8 @@ def main():
                         cm,
                         text_auto=True,
                         labels={'x': 'Predicted', 'y': 'Actual'},
-                        x=['Green Flag', 'Red Flag'],
-                        y=['Green Flag', 'Red Flag'],
+                        x=['Real', 'Fake'],
+                        y=['Real', 'Fake'],
                         color_continuous_scale='Blues'
                     )
                     st.plotly_chart(fig, use_container_width=True)
@@ -384,7 +383,7 @@ def main():
         # Single text prediction
         st.subheader("Single Text Classification")
         user_text = st.text_area("Enter text to classify:", 
-                                placeholder="Type or paste a sentence here...")
+                                placeholder="Type or paste a headline here...")
         
         if st.button("🔍 Classify Text") and user_text:
             with st.spinner("Classifying with LLM..."):
@@ -397,10 +396,12 @@ def main():
                 result = results[0]
             
             # Display prediction
-            if result['prediction'] == 'Red Flag':
-                st.error(f"🚩 **Red Flag**")
+            if result['prediction'] == 'Fake':
+                st.error(f"🚩 **Fake News**")
+            elif result['prediction'] == 'Real':
+                st.success(f"✅ **Real News**")
             else:
-                st.success(f"✅ **Green Flag**")
+                st.error(result['prediction'])
         
         st.markdown("---")
         
@@ -412,7 +413,7 @@ def main():
         upload_method = st.radio("Choose upload method:", ["Text File", "CSV File", "Manual Input"])
         
         if upload_method == "Text File":
-            uploaded_file = st.file_uploader("Upload a text file (one sentence per line)", 
+            uploaded_file = st.file_uploader("Upload a text file (one headline per line)", 
                                             type=['txt'])
             if uploaded_file is not None:
                 texts = uploaded_file.read().decode('utf-8').strip().split('\\n')
@@ -424,26 +425,26 @@ def main():
                     process_batch_llm(texts)
         
         elif upload_method == "CSV File":
-            uploaded_file = st.file_uploader("Upload a CSV file with a 'sentence' column", 
+            uploaded_file = st.file_uploader("Upload a CSV file with a 'headline' column", 
                                             type=['csv'])
             if uploaded_file is not None:
                 try:
                     csv_df = pd.read_csv(uploaded_file)
-                    if 'sentence' in csv_df.columns:
-                        texts = csv_df['sentence'].dropna().tolist()
-                        st.info(f"Found {len(texts)} sentences. Estimated cost: ~${len(texts) * 0.001:.3f}")
+                    if 'headline' in csv_df.columns:
+                        texts = csv_df['headline'].dropna().tolist()
+                        st.info(f"Found {len(texts)} headlines. Estimated cost: ~${len(texts) * 0.001:.3f}")
                         
                         if st.button("🔍 Classify Batch (CSV)"):
                             process_batch_llm(texts)
                     else:
-                        st.error("CSV file must contain a 'sentence' column")
+                        st.error("CSV file must contain a 'headline' column")
                 except Exception as e:
                     st.error(f"Error reading CSV: {e}")
         
         else:  # Manual Input
-            manual_texts = st.text_area("Enter multiple sentences (one per line):", 
+            manual_texts = st.text_area("Enter multiple headlines (one per line):", 
                                        height=150,
-                                       placeholder="Sentence 1\\nSentence 2\\nSentence 3...")
+                                       placeholder="Headline 1\\nHeadline 2\\nHeadline 3...")
             
             if st.button("🔍 Classify Batch (Manual)") and manual_texts:
                 texts = [t.strip() for t in manual_texts.strip().split('\\n') if t.strip()]
@@ -471,13 +472,13 @@ def process_batch_llm(texts):
     st.subheader("📊 Batch Results Summary")
     col1, col2 = st.columns(2)
     
-    red_count = sum(1 for r in results if r['prediction'] == 'Red Flag')
+    red_count = sum(1 for r in results if r['prediction'] == 'Fake')
     green_count = len(results) - red_count
     
     with col1:
-        st.metric("🚩 Red Flags", red_count)
+        st.metric("🚩 Fake", red_count)
     with col2:
-        st.metric("✅ Green Flags", green_count)
+        st.metric("✅ Real", green_count)
     
     # Detailed results table
     st.subheader("📋 Detailed Results")
@@ -490,7 +491,7 @@ def process_batch_llm(texts):
     
     # Color code the predictions
     def color_predictions(row):
-        if row['Prediction'] == 'Red Flag':
+        if row['Prediction'] == 'Fake':
             return ['background-color: #ffebee'] * len(row)
         else:
             return ['background-color: #e8f5e8'] * len(row)
